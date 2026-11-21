@@ -1,7 +1,7 @@
-package appsec.Safe.repository;
+package appsec.safe.repository;
 
-import appsec.Safe.entity.IncidentTypeEntity;
-import appsec.Safe.entity.RegisteredIncidentEntity;
+import appsec.safe.entity.IncidentTypeEntity;
+import appsec.safe.entity.RegisteredIncidentEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDateTime;

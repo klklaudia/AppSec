@@ -1,13 +1,16 @@
-package appsec.Safe.security;
+package appsec.safe.security;
 
+import appsec.safe.config.AppSecProperties;
 import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.Locale;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 import org.bouncycastle.crypto.generators.Argon2BytesGenerator;
 import org.bouncycastle.crypto.params.Argon2Parameters;
 import org.springframework.stereotype.Component;
@@ -15,10 +18,24 @@ import org.springframework.stereotype.Component;
 @Component
 public class PasswordManager {
 
+    private static final String HMAC_ALGORITHM = "HmacSHA256";
+    private static final String PHC_PREFIX = "$argon2id$v=19$";
+    private static final Base64.Encoder B64_ENCODER = Base64.getEncoder().withoutPadding();
+    private static final Base64.Decoder B64_DECODER = Base64.getDecoder();
+
+    private final byte[] pepper;
+
+    public PasswordManager(AppSecProperties properties) {
+        String configuredPepper = properties.getPepper();
+        if (configuredPepper == null || configuredPepper.length() < 16) {
+            throw new IllegalStateException("appsec.pepper must be set (min. 16 characters).");
+        }
+        this.pepper = configuredPepper.getBytes(StandardCharsets.UTF_8);
+    }
+
     private static final int MIN_LENGTH = 8;
     private static final int MAX_LENGTH = 30;
 
-    // Parametry Argon2id (dostosowane do lokalnego środowiska dev)
     private static final int SALT_LENGTH = 16;
     private static final int HASH_LENGTH = 32;
     private static final int ITERATIONS = 3;
@@ -141,57 +158,81 @@ public class PasswordManager {
             throw new IllegalArgumentException("Hasło do zahashowania nie może być puste.");
         }
 
-        byte[] preHashed = sha256(plainPassword);
+        byte[] peppered = hmacWithPepper(plainPassword);
         byte[] salt = new byte[SALT_LENGTH];
         SECURE_RANDOM.nextBytes(salt);
 
-        byte[] derivedKey = computeArgon2id(preHashed, salt);
-        return Base64.getEncoder().encodeToString(salt) + ":" + Base64.getEncoder().encodeToString(derivedKey);
+        byte[] derivedKey = computeArgon2id(peppered, salt, MEMORY_KB, ITERATIONS, PARALLELISM, HASH_LENGTH);
+        // Standard PHC string: $argon2id$v=19$m=65536,t=3,p=1$<salt>$<hash>
+        return PHC_PREFIX + "m=" + MEMORY_KB + ",t=" + ITERATIONS + ",p=" + PARALLELISM
+                + "$" + B64_ENCODER.encodeToString(salt)
+                + "$" + B64_ENCODER.encodeToString(derivedKey);
     }
 
-  
+    /**
+     * Verifies a password against a stored PHC string. Parameters are read from the
+     * stored value, so cost settings can be raised later without breaking old hashes.
+     */
     public boolean verify(String plainPassword, String storedHash) {
-        if (plainPassword == null || storedHash == null || !storedHash.contains(":")) {
+        if (plainPassword == null || storedHash == null || !storedHash.startsWith(PHC_PREFIX)) {
             return false;
         }
 
-        String[] parts = storedHash.split(":", 2);
+        String[] parts = storedHash.substring(PHC_PREFIX.length()).split("\\$");
+        if (parts.length != 3) {
+            return false;
+        }
+
+        int memory;
+        int iterations;
+        int parallelism;
         byte[] salt;
         byte[] expectedHash;
         try {
-            salt = Base64.getDecoder().decode(parts[0]);
-            expectedHash = Base64.getDecoder().decode(parts[1]);
-        } catch (IllegalArgumentException ex) {
+            String[] params = parts[0].split(",");
+            if (params.length != 3) {
+                return false;
+            }
+            memory = Integer.parseInt(params[0].substring("m=".length()));
+            iterations = Integer.parseInt(params[1].substring("t=".length()));
+            parallelism = Integer.parseInt(params[2].substring("p=".length()));
+            salt = B64_DECODER.decode(parts[1]);
+            expectedHash = B64_DECODER.decode(parts[2]);
+        } catch (IllegalArgumentException | IndexOutOfBoundsException ex) {
             return false;
         }
 
-        byte[] preHashed = sha256(plainPassword);
-        byte[] actualHash = computeArgon2id(preHashed, salt);
+        byte[] peppered = hmacWithPepper(plainPassword);
+        byte[] actualHash = computeArgon2id(peppered, salt, memory, iterations, parallelism, expectedHash.length);
         return MessageDigest.isEqual(expectedHash, actualHash);
     }
 
-    private byte[] computeArgon2id(byte[] input, byte[] salt) {
+    private byte[] computeArgon2id(byte[] input, byte[] salt, int memoryKb, int iterations,
+                                   int parallelism, int hashLength) {
         Argon2Parameters params = new Argon2Parameters.Builder(Argon2Parameters.ARGON2_id)
+                .withVersion(Argon2Parameters.ARGON2_VERSION_13)
                 .withSalt(salt)
-                .withIterations(ITERATIONS)
-                .withMemoryAsKB(MEMORY_KB)
-                .withParallelism(PARALLELISM)
+                .withIterations(iterations)
+                .withMemoryAsKB(memoryKb)
+                .withParallelism(parallelism)
                 .build();
 
         Argon2BytesGenerator generator = new Argon2BytesGenerator();
         generator.init(params);
 
-        byte[] out = new byte[HASH_LENGTH];
+        byte[] out = new byte[hashLength];
         generator.generateBytes(input, out, 0, out.length);
         return out;
     }
 
-    private byte[] sha256(String input) {
+    /** HMAC-SHA256 with a server-side secret (pepper), kept outside the database. */
+    private byte[] hmacWithPepper(String input) {
         try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            return digest.digest(input.getBytes(StandardCharsets.UTF_8));
-        } catch (NoSuchAlgorithmException ex) {
-            throw new IllegalStateException("Brak algorytmu SHA-256 w środowisku JVM.", ex);
+            Mac mac = Mac.getInstance(HMAC_ALGORITHM);
+            mac.init(new SecretKeySpec(pepper, HMAC_ALGORITHM));
+            return mac.doFinal(input.getBytes(StandardCharsets.UTF_8));
+        } catch (GeneralSecurityException ex) {
+            throw new IllegalStateException("HMAC-SHA256 is not available in this JVM.", ex);
         }
     }
 

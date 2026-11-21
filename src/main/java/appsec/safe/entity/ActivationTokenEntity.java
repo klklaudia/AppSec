@@ -1,4 +1,4 @@
-package appsec.Safe.entity;
+package appsec.safe.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -37,5 +37,5 @@ public class ActivationTokenEntity {
 
     @Column(name = "is_valid", nullable = false)
     @Builder.Default
-    private boolean isValid = true;
+    private boolean valid = true;
 }

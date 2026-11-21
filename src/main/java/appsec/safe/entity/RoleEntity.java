@@ -1,4 +1,4 @@
-package appsec.Safe.entity;
+package appsec.safe.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
