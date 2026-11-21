@@ -80,25 +80,6 @@
                autocomplete="new-password">
     </div>
 
-    <div class="field">
-        <label for="name">Name</label>
-        <input type="text" id="name" name="name"
-               minlength="3" maxlength="20" pattern="\p{L}{3,20}"
-               title="3-20 letters." autocomplete="given-name">
-    </div>
-
-    <div class="field">
-        <label for="surname">Surname</label>
-        <input type="text" id="surname" name="surname"
-               minlength="3" maxlength="20" pattern="\p{L}{3,20}"
-               title="3-20 letters." autocomplete="family-name">
-    </div>
-
-    <div class="field">
-        <label for="birthday">Birth date</label>
-        <input type="date" id="birthday" name="birthday" autocomplete="bday">
-    </div>
-
     <button type="submit">Register</button>
     <div id="result" role="status" aria-live="polite"></div>
 </form>
@@ -108,7 +89,6 @@
     const password = document.getElementById('password');
     const confirmPassword = document.getElementById('confirmPassword');
     const result = document.getElementById('result');
-    document.getElementById('birthday').max = new Date().toISOString().slice(0, 10);
 
     function checkPasswordRules() {
         const value = password.value;
@@ -154,14 +134,10 @@
             return;
         }
 
-        const optional = id => document.getElementById(id).value.trim() || null;
         const payload = {
             username: document.getElementById('username').value.trim(),
             email: document.getElementById('email').value.trim(),
-            password: password.value,
-            name: optional('name'),
-            surname: optional('surname'),
-            birthday: optional('birthday')
+            password: password.value
         };
 
         try {

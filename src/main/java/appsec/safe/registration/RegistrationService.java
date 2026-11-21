@@ -1,8 +1,6 @@
 package appsec.safe.registration;
 
-import appsec.safe.entity.RoleEntity;
 import appsec.safe.entity.UserEntity;
-import appsec.safe.repository.RoleRepository;
 import appsec.safe.repository.UserRepository;
 import appsec.safe.security.PasswordManager;
 import lombok.RequiredArgsConstructor;
@@ -20,7 +18,6 @@ public class RegistrationService {
     private static final String DEFAULT_ROLE = "USER";
 
     private final UserRepository userRepository;
-    private final RoleRepository roleRepository;
     private final PasswordManager passwordManager;
 
     /**
@@ -52,17 +49,10 @@ public class RegistrationService {
             throw new RegistrationException(HttpStatus.CONFLICT, "E-mail address is already in use.");
         }
 
-        RoleEntity role = roleRepository.findByRoleName(DEFAULT_ROLE)
-                .orElseThrow(() -> new IllegalStateException("Role " + DEFAULT_ROLE + " is missing."));
-
         UserEntity user = UserEntity.builder()
-                .role(role)
                 .username(username)
                 .email(email)
                 .hashedPassword(passwordManager.hash(request.password()))
-                .name(blankToNull(request.name()))
-                .surname(blankToNull(request.surname()))
-                .birthday(request.birthday())
                 .active(false)
                 .build();
 
