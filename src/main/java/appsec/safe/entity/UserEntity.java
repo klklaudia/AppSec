@@ -1,4 +1,4 @@
-package appsec.Safe.entity;
+package appsec.safe.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -44,7 +44,7 @@ public class UserEntity {
 
     @Column(name = "is_active", nullable = false)
     @Builder.Default
-    private boolean isActive = false;
+    private boolean active = false;
 
     @Column(name = "last_activity")
     private LocalDateTime lastActivity;

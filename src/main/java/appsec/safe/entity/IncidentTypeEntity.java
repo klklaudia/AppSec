@@ -1,10 +1,10 @@
-package appsec.Safe.entity;
+package appsec.safe.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
-@Table(name = "incidents")
+@Table(name = "incident_types")
 @Getter
 @Setter
 @NoArgsConstructor

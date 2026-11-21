@@ -1,6 +1,6 @@
-package appsec.Safe.repository;
+package appsec.safe.repository;
 
-import appsec.Safe.entity.RoleEntity;
+import appsec.safe.entity.RoleEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;

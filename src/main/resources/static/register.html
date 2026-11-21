@@ -32,59 +32,157 @@
             width: 100%;
             padding: 8px;
         }
+        #result {
+            margin-top: 16px;
+        }
+        #result.error {
+            color: #b00020;
+        }
+        #result.success {
+            color: #1b5e20;
+        }
     </style>
 </head>
 <body>
-<form id="registerForm" action="/register" method="post">
+<form id="registerForm" novalidate>
     <h1>Register</h1>
 
     <div class="field">
-        <label for="username">Username</label>
+        <label for="username">Username *</label>
         <input type="text" id="username" name="username"
                required minlength="3" maxlength="20"
-               pattern="[A-Za-z][A-Za-z0-9_\-]{2,19}"
-               title="3-20 characters. Must start with a letter. Only letters, digits, - and _ are allowed."
+               pattern="[A-Za-z0-9]{3,20}"
+               title="3-20 characters, letters and digits only."
                autocomplete="username">
-        <small>3-20 characters, starts with a letter. Letters, digits, - and _ only.</small>
+        <small>3-20 characters, letters and digits only.</small>
     </div>
 
     <div class="field">
-        <label for="email">Email</label>
+        <label for="email">Email *</label>
         <input type="email" id="email" name="email"
                required maxlength="254"
                autocomplete="email">
     </div>
 
     <div class="field">
-        <label for="password">Password</label>
+        <label for="password">Password *</label>
         <input type="password" id="password" name="password"
-               required minlength="8" maxlength="72"
+               required minlength="8" maxlength="30"
                autocomplete="new-password">
-        <small>8-72 characters.</small>
+        <small>8-30 characters, at least one uppercase letter, one lowercase letter and one digit.
+            Must not contain your username or e-mail.</small>
     </div>
 
     <div class="field">
-        <label for="confirmPassword">Repeat password</label>
+        <label for="confirmPassword">Repeat password *</label>
         <input type="password" id="confirmPassword"
-               required minlength="8" maxlength="72"
+               required minlength="8" maxlength="30"
                autocomplete="new-password">
     </div>
 
+    <div class="field">
+        <label for="name">Name</label>
+        <input type="text" id="name" name="name"
+               minlength="3" maxlength="20" pattern="\p{L}{3,20}"
+               title="3-20 letters." autocomplete="given-name">
+    </div>
+
+    <div class="field">
+        <label for="surname">Surname</label>
+        <input type="text" id="surname" name="surname"
+               minlength="3" maxlength="20" pattern="\p{L}{3,20}"
+               title="3-20 letters." autocomplete="family-name">
+    </div>
+
+    <div class="field">
+        <label for="birthday">Birth date</label>
+        <input type="date" id="birthday" name="birthday" autocomplete="bday">
+    </div>
+
     <button type="submit">Register</button>
+    <div id="result" role="status" aria-live="polite"></div>
 </form>
 
 <script>
+    const form = document.getElementById('registerForm');
     const password = document.getElementById('password');
     const confirmPassword = document.getElementById('confirmPassword');
+    const result = document.getElementById('result');
+    document.getElementById('birthday').max = new Date().toISOString().slice(0, 10);
 
-    function checkMatch() {
+    function checkPasswordRules() {
+        const value = password.value;
+        const username = document.getElementById('username').value.toLowerCase();
+        const email = document.getElementById('email').value.toLowerCase();
+        let message = '';
+        if (value && !/[A-Z]/.test(value)) message = 'Add an uppercase letter.';
+        else if (value && !/[a-z]/.test(value)) message = 'Add a lowercase letter.';
+        else if (value && !/[0-9]/.test(value)) message = 'Add a digit.';
+        else if (username && value.toLowerCase().includes(username)) message = 'Password must not contain the username.';
+        else if (email && value.toLowerCase().includes(email)) message = 'Password must not contain the e-mail.';
+        password.setCustomValidity(message);
         confirmPassword.setCustomValidity(
             password.value === confirmPassword.value ? '' : 'Passwords do not match.'
         );
     }
 
-    password.addEventListener('input', checkMatch);
-    confirmPassword.addEventListener('input', checkMatch);
+    ['password', 'confirmPassword', 'username', 'email']
+        .forEach(id => document.getElementById(id).addEventListener('input', checkPasswordRules));
+
+    // Messages are inserted with textContent only, so server data can never inject HTML.
+    function showResult(kind, message, errors) {
+        result.className = kind;
+        result.replaceChildren();
+        const p = document.createElement('p');
+        p.textContent = message;
+        result.appendChild(p);
+        if (errors && errors.length) {
+            const ul = document.createElement('ul');
+            errors.forEach(e => {
+                const li = document.createElement('li');
+                li.textContent = e;
+                ul.appendChild(li);
+            });
+            result.appendChild(ul);
+        }
+    }
+
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        checkPasswordRules();
+        if (!form.reportValidity()) {
+            return;
+        }
+
+        const optional = id => document.getElementById(id).value.trim() || null;
+        const payload = {
+            username: document.getElementById('username').value.trim(),
+            email: document.getElementById('email').value.trim(),
+            password: password.value,
+            name: optional('name'),
+            surname: optional('surname'),
+            birthday: optional('birthday')
+        };
+
+        try {
+            const response = await fetch('/api/auth/register', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+            const body = await response.json().catch(() => ({}));
+            if (response.ok) {
+                form.reset();
+                showResult('success', body.message || 'Account created.', []);
+            } else if (response.status === 429) {
+                showResult('error', 'Too many requests. Try again later.', []);
+            } else {
+                showResult('error', body.message || 'Registration failed.', body.errors || []);
+            }
+        } catch (e) {
+            showResult('error', 'Cannot reach the server.', []);
+        }
+    });
 </script>
 </body>
 </html>
