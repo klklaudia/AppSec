@@ -81,6 +81,10 @@
                autocomplete="new-password">
     </div>
 
+    <div class="field">
+        <div id="captcha"></div>
+    </div>
+
     <button type="submit">Register</button>
     <div id="result" role="status" aria-live="polite"></div>
 </form>
@@ -110,6 +114,30 @@
     ['password', 'confirmPassword', 'username', 'email']
         .forEach(id => document.getElementById(id).addEventListener('input', checkPasswordRules));
 
+    // --- reCAPTCHA v2: site key comes from the server, widget is rendered explicitly ---
+    let captchaWidgetId = null;
+
+    async function onCaptchaApiLoaded() {
+        try {
+            const response = await fetch('/api/captcha/site-key', {headers: {'Accept': 'application/json'}});
+            const {siteKey} = await response.json();
+            captchaWidgetId = grecaptcha.render('captcha', {sitekey: siteKey});
+        } catch (e) {
+            showResult('error', 'CAPTCHA could not be loaded. Refresh the page.', []);
+        }
+    }
+
+    function captchaResponse() {
+        return captchaWidgetId === null ? '' : grecaptcha.getResponse(captchaWidgetId);
+    }
+
+    function resetCaptcha() {
+        // A reCAPTCHA response is single-use, so a new one is needed after every attempt.
+        if (captchaWidgetId !== null) {
+            grecaptcha.reset(captchaWidgetId);
+        }
+    }
+
     // Messages are inserted with textContent only, so server data can never inject HTML.
     function showResult(kind, message, errors) {
         result.className = kind;
@@ -134,11 +162,17 @@
         if (!form.reportValidity()) {
             return;
         }
+        const captcha = captchaResponse();
+        if (!captcha) {
+            showResult('error', 'Please confirm that you are not a robot.', []);
+            return;
+        }
 
         const payload = {
             username: document.getElementById('username').value.trim(),
             email: document.getElementById('email').value.trim(),
-            password: password.value
+            password: password.value,
+            captchaResponse: captcha
         };
 
         try {
@@ -158,8 +192,11 @@
             }
         } catch (e) {
             showResult('error', 'Cannot reach the server.', []);
+        } finally {
+            resetCaptcha();
         }
     });
 </script>
+<script src="https://www.google.com/recaptcha/api.js?onload=onCaptchaApiLoaded&render=explicit" async defer></script>
 </body>
 </html>

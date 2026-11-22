@@ -27,7 +27,12 @@ public record RegisterRequest(
         // Detailed password rules (upper/lower/digit, no username/e-mail) are checked by PasswordManager.
         @NotBlank(message = "Password is required.")
         @Size(min = 8, max = 30, message = "Password must be 8-30 characters.")
-        String password
+        String password,
+
+        // Response token from the reCAPTCHA widget (g-recaptcha-response), verified with Google on the server.
+        @NotBlank(message = "Please confirm that you are not a robot.")
+        @Size(max = 4000, message = "CAPTCHA response is too long.")
+        String captchaResponse
 ) {
     @Override
     public String toString() {

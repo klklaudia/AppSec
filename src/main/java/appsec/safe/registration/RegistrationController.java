@@ -1,5 +1,7 @@
 package appsec.safe.registration;
 
+import appsec.safe.captcha.CaptchaService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,13 +21,19 @@ import java.util.List;
 public class RegistrationController {
 
     private final RegistrationService registrationService;
+    private final CaptchaService captchaService;
 
     private boolean exposeToken;
 
     /** JSON in, JSON out: user input is never reflected into an HTML response. */
     @PostMapping(path = "/register", consumes = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
-    public ApiResponse register(@Valid @RequestBody RegisterRequest request) {
+    public ApiResponse register(@Valid @RequestBody RegisterRequest request, HttpServletRequest httpRequest) {
+        // CAPTCHA is checked first, before any database lookup or password hashing.
+        // getRemoteAddr() is used on purpose: X-Forwarded-For can be forged by the client.
+        if (!captchaService.verify(request.captchaResponse(), httpRequest.getRemoteAddr())) {
+            throw new RegistrationException(HttpStatus.BAD_REQUEST, "CAPTCHA verification failed. Please try again.");
+        }
         registrationService.register(request);
         return new ApiResponse(
                 "Account created.Check your e-mail to activate your account.",
