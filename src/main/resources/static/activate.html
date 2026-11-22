@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="data:,">
     <title>Activate account</title>
     <style>
         main {
@@ -10,10 +11,12 @@
             margin: 40px auto;
             text-align: center;
         }
+
         button {
             width: 100%;
             padding: 8px;
         }
+
         [hidden] {
             display: none !important;
         }
@@ -22,22 +25,18 @@
 <body>
 <main>
     <h1>Activate your account</h1>
-    <p id="msg">Click the button to activate your account.</p>
-    <button id="go" type="button">Activate</button>
+    <p id="msg">Activating your account...</p>
 </main>
 
 <script>
     const token = new URLSearchParams(location.search).get('token');
     const msg = document.getElementById('msg');
-    const go = document.getElementById('go');
 
-    if (!token) {
-        msg.textContent = 'Check your e-mail for the activation link.';
-        go.hidden = true;
-    }
-
-    go.addEventListener('click', async () => {
-        go.disabled = true;
+    async function activate() {
+        if (!token) {
+            msg.textContent = 'Invalid activation link.';
+            return;
+        }
         try {
             const response = await fetch('/api/auth/activate', {
                 method: 'POST',
@@ -45,18 +44,16 @@
                 body: JSON.stringify({token})
             });
             const body = await response.json().catch(() => ({}));
-            if (response.ok) {
-                msg.textContent = body.message || 'Your account was activated.';
-                go.hidden = true;
-            } else {
-                msg.textContent = body.message || 'Activation failed.';
-                go.disabled = false;
-            }
+            msg.textContent = response.ok
+                ? (body.message || 'Your account was activated.')
+                : (body.message || 'Activation failed.');
         } catch (e) {
             msg.textContent = 'Cannot reach the server.';
             go.disabled = false;
         }
-    });
+    }
+
+    activate();
 </script>
 </body>
 </html>

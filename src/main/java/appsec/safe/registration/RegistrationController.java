@@ -20,17 +20,15 @@ public class RegistrationController {
 
     private final RegistrationService registrationService;
 
-    @Value("${appsec.dev.expose-activation-token:false}")
     private boolean exposeToken;
 
     /** JSON in, JSON out: user input is never reflected into an HTML response. */
     @PostMapping(path = "/register", consumes = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
-    public RegisterResponse register(@Valid @RequestBody RegisterRequest request) {
-        RegistrationResult result = registrationService.register(request);
-        return new RegisterResponse(
-                "Account created.",
-                List.of(),
-                exposeToken ? result.rawToken() : null);
+    public ApiResponse register(@Valid @RequestBody RegisterRequest request) {
+        registrationService.register(request);
+        return new ApiResponse(
+                "Account created.Check your e-mail to activate your account.",
+                List.of());
     }
 }

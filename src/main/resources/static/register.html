@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="data:,">
     <title>Register</title>
     <style>
         form {
@@ -150,15 +151,6 @@
             if (response.ok) {
                 form.reset();
                 showResult('success', body.message || 'Account created.', []);
-                if (body.activationToken) {
-                    const btn = document.createElement('button');
-                    btn.type = 'button';
-                    btn.textContent = 'Activate account';
-                    btn.addEventListener('click', () => {
-                        window.location.href = '/activate.html?token=' + encodeURIComponent(body.activationToken);
-                    });
-                    result.appendChild(btn);
-                }
             } else if (response.status === 429) {
                 showResult('error', 'Too many requests. Try again later.', []);
             } else {

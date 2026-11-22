@@ -1,5 +1,6 @@
 package appsec.safe.registration;
 
+import appsec.safe.email.EmailService;
 import appsec.safe.activation.TokenUtil;
 import appsec.safe.entity.ActivationTokenEntity;
 import appsec.safe.entity.UserEntity;
@@ -25,14 +26,12 @@ public class RegistrationService {
     private final UserRepository userRepository;
     private final PasswordManager passwordManager;
     private final TokenRepository tokenRepository;
+    private final EmailService emailService;
 
     @Value("${appsec.activation.token-ttl-minutes}")
     private long tokenTtlMinutes;
 
-    /**
-     * Creates a new, inactive account. Activation token generation and e-mail sending
-     * are the next step (TODO: ActivationService).
-     */
+    //TODO decide, if RegistrationResult is needed
     @Transactional
     public RegistrationResult register(RegisterRequest request) {
         String username = request.username().trim();
@@ -50,7 +49,7 @@ public class RegistrationService {
                 .ifPresent(existing -> {
                     throw new RegistrationException(HttpStatus.CONFLICT,
                             "This account already exists but has not been activated yet.");
-                });
+                }); //TODO resend the token
         if (userRepository.existsByUsername(username)) {
             throw new RegistrationException(HttpStatus.CONFLICT, "Username is already taken.");
         }
@@ -77,6 +76,7 @@ public class RegistrationService {
                     .createdAt(now)
                     .expiresAt(now.plusMinutes(tokenTtlMinutes))
                     .build());
+            emailService.sendActivationEmail(saved.getEmail(), rawToken);
 
             return new RegistrationResult(saved, rawToken);
         } catch (DataIntegrityViolationException ex) {
