@@ -1,14 +1,19 @@
 package appsec.safe.registration;
 
+import appsec.safe.activation.TokenUtil;
+import appsec.safe.entity.ActivationTokenEntity;
 import appsec.safe.entity.UserEntity;
+import appsec.safe.repository.TokenRepository;
 import appsec.safe.repository.UserRepository;
 import appsec.safe.security.PasswordManager;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.Locale;
 
 @Service
@@ -19,13 +24,17 @@ public class RegistrationService {
 
     private final UserRepository userRepository;
     private final PasswordManager passwordManager;
+    private final TokenRepository tokenRepository;
+
+    @Value("${appsec.activation.token-ttl-minutes}")
+    private long tokenTtlMinutes;
 
     /**
      * Creates a new, inactive account. Activation token generation and e-mail sending
      * are the next step (TODO: ActivationService).
      */
     @Transactional
-    public UserEntity register(RegisterRequest request) {
+    public RegistrationResult register(RegisterRequest request) {
         String username = request.username().trim();
         String email = request.email().trim().toLowerCase(Locale.ROOT);
 
@@ -57,7 +66,19 @@ public class RegistrationService {
                 .build();
 
         try {
-            return userRepository.saveAndFlush(user);
+            UserEntity saved = userRepository.saveAndFlush(user);
+
+            String rawToken = TokenUtil.newToken();
+            LocalDateTime now = LocalDateTime.now();
+            tokenRepository.save(ActivationTokenEntity.builder()
+                    .tokenHash(TokenUtil.sha256(rawToken))
+                    .user(saved)
+                    .email(saved.getEmail())
+                    .createdAt(now)
+                    .expiresAt(now.plusMinutes(tokenTtlMinutes))
+                    .build());
+
+            return new RegistrationResult(saved, rawToken);
         } catch (DataIntegrityViolationException ex) {
             // Race between the exists-checks above and the insert; UNIQUE constraints decide.
             throw new RegistrationException(HttpStatus.CONFLICT, "Username or e-mail address is already in use.");

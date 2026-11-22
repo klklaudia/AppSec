@@ -26,7 +26,7 @@ public class ActivationTokenEntity {
     @JoinColumn(name = "user_id", nullable = false)
     private UserEntity user;
 
-    @Column(name = "email", length = 255, nullable = false)
+    @Column(name = "email", length = 254, nullable = false)
     private String email;
 
     @Column(name = "created_at", nullable = false)

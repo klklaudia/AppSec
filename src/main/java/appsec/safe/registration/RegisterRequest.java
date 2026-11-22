@@ -27,16 +27,7 @@ public record RegisterRequest(
         // Detailed password rules (upper/lower/digit, no username/e-mail) are checked by PasswordManager.
         @NotBlank(message = "Password is required.")
         @Size(min = 8, max = 30, message = "Password must be 8-30 characters.")
-        String password,
-
-        @Pattern(regexp = "^$|^\\p{L}{3,20}$", message = "Name must be 3-20 letters.")
-        String name,
-
-        @Pattern(regexp = "^$|^\\p{L}{3,20}$", message = "Surname must be 3-20 letters.")
-        String surname,
-
-        @Past(message = "Birth date must be in the past.")
-        LocalDate birthday
+        String password
 ) {
     @Override
     public String toString() {

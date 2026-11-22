@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Activate account</title>
+    <style>
+        main {
+            max-width: 320px;
+            margin: 40px auto;
+            text-align: center;
+        }
+        button {
+            width: 100%;
+            padding: 8px;
+        }
+        [hidden] {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+<main>
+    <h1>Activate your account</h1>
+    <p id="msg">Click the button to activate your account.</p>
+    <button id="go" type="button">Activate</button>
+</main>
+
+<script>
+    const token = new URLSearchParams(location.search).get('token');
+    const msg = document.getElementById('msg');
+    const go = document.getElementById('go');
+
+    if (!token) {
+        msg.textContent = 'Check your e-mail for the activation link.';
+        go.hidden = true;
+    }
+
+    go.addEventListener('click', async () => {
+        go.disabled = true;
+        try {
+            const response = await fetch('/api/auth/activate', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({token})
+            });
+            const body = await response.json().catch(() => ({}));
+            if (response.ok) {
+                msg.textContent = body.message || 'Your account was activated.';
+                go.hidden = true;
+            } else {
+                msg.textContent = body.message || 'Activation failed.';
+                go.disabled = false;
+            }
+        } catch (e) {
+            msg.textContent = 'Cannot reach the server.';
+            go.disabled = false;
+        }
+    });
+</script>
+</body>
+</html>
