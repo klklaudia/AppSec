@@ -1,4 +1,4 @@
-package appsec.safe.config;
+package appsec.safe.common.config;
 
 import appsec.safe.entity.IncidentTypeEntity;
 import appsec.safe.repository.IncidentTypeRepository;

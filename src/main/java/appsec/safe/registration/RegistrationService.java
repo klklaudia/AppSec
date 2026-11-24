@@ -1,7 +1,7 @@
 package appsec.safe.registration;
 
 import appsec.safe.email.EmailService;
-import appsec.safe.activation.TokenUtil;
+import appsec.safe.activation.token.TokenUtil;
 import appsec.safe.entity.ActivationTokenEntity;
 import appsec.safe.entity.UserEntity;
 import appsec.safe.repository.TokenRepository;
@@ -20,8 +20,6 @@ import java.util.Locale;
 @Service
 @RequiredArgsConstructor
 public class RegistrationService {
-
-    private static final String DEFAULT_ROLE = "USER";
 
     private final UserRepository userRepository;
     private final PasswordManager passwordManager;
@@ -49,7 +47,7 @@ public class RegistrationService {
                 .ifPresent(existing -> {
                     throw new RegistrationException(HttpStatus.CONFLICT,
                             "This account already exists but has not been activated yet.");
-                }); //TODO resend the token
+                });
         if (userRepository.existsByUsername(username)) {
             throw new RegistrationException(HttpStatus.CONFLICT, "Username is already taken.");
         }
@@ -85,7 +83,4 @@ public class RegistrationService {
         }
     }
 
-    private static String blankToNull(String value) {
-        return value == null || value.isBlank() ? null : value.trim();
-    }
 }

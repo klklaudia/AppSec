@@ -1,4 +1,4 @@
-package appsec.safe.activation;
+package appsec.safe.activation.token;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;

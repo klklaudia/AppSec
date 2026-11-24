@@ -1,12 +1,9 @@
 package appsec.safe.activation;
 
-import appsec.safe.registration.ApiResponse;
+import appsec.safe.common.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -21,5 +18,12 @@ public class ActivationController {
     public ApiResponse activate(@Valid @RequestBody ActivationRequest request) {
         activationService.activate(request.token());
         return new ApiResponse("Your account was activated. Now you can log in.", List.of());
+    }
+
+    @PostMapping("/resend-activation")
+    public ApiResponse resendLink(@RequestParam String email) {
+        activationService.resendLink(email);
+        return new ApiResponse("If this e-mail belongs to an account that is not activated yet, " +
+                "we have sent a new link.", List.of());
     }
 }

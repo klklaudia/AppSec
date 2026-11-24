@@ -1,6 +1,6 @@
 package appsec.safe.security;
 
-import appsec.safe.config.AppSecProperties;
+import appsec.safe.common.config.AppSecProperties;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;

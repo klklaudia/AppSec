@@ -1,10 +1,10 @@
 package appsec.safe.registration;
 
 import appsec.safe.captcha.CaptchaService;
+import appsec.safe.common.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -22,8 +22,6 @@ public class RegistrationController {
 
     private final RegistrationService registrationService;
     private final CaptchaService captchaService;
-
-    private boolean exposeToken;
 
     /** JSON in, JSON out: user input is never reflected into an HTML response. */
     @PostMapping(path = "/register", consumes = MediaType.APPLICATION_JSON_VALUE)

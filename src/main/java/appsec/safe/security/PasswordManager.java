@@ -1,6 +1,6 @@
 package appsec.safe.security;
 
-import appsec.safe.config.AppSecProperties;
+import appsec.safe.common.config.AppSecProperties;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.MessageDigest;

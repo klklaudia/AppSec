@@ -1,4 +1,4 @@
-package appsec.safe.registration;
+package appsec.safe.common;
 
 import java.util.List;
 

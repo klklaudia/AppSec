@@ -1,5 +1,9 @@
-package appsec.safe.registration;
+package appsec.safe.common;
 
+import appsec.safe.activation.token.exception.AlreadyUsedActivationTokenException;
+import appsec.safe.activation.token.exception.ExpiredActivationTokenException;
+import appsec.safe.activation.token.exception.InvalidActivationTokenException;
+import appsec.safe.registration.RegistrationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -39,6 +43,39 @@ public class ApiExceptionHandler {
     public ResponseEntity<ApiResponse> handleUnexpected(Exception ex) {
         log.error("Unexpected error", ex);
         return body(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected server error.", List.of());
+    }
+
+    @ExceptionHandler(InvalidActivationTokenException.class)
+    public ResponseEntity<ApiResponse> handleInvalidActivationToken(
+            InvalidActivationTokenException ex) {
+
+        return body(
+                HttpStatus.BAD_REQUEST,
+                "Invalid activation link.",
+                List.of()
+        );
+    }
+
+    @ExceptionHandler(ExpiredActivationTokenException.class)
+    public ResponseEntity<ApiResponse> handleExpiredActivationToken(
+            ExpiredActivationTokenException ex) {
+
+        return body(
+                HttpStatus.BAD_REQUEST,
+                "Expired activation link.",
+                List.of()
+        );
+    }
+
+    @ExceptionHandler(AlreadyUsedActivationTokenException.class)
+    public ResponseEntity<ApiResponse> handleAlreadyUsedActivationToken(
+            AlreadyUsedActivationTokenException ex) {
+
+        return body(
+                HttpStatus.BAD_REQUEST,
+                "Invalid activation link.",
+                List.of()
+        );
     }
 
     private static ResponseEntity<ApiResponse> body(HttpStatus status, String message, List<String> errors) {

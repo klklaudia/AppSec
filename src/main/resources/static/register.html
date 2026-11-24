@@ -10,35 +10,50 @@
             max-width: 320px;
             margin: 40px auto;
         }
+
         h1 {
             text-align: center;
         }
+
         .field {
             margin-bottom: 16px;
         }
+
         label {
             display: block;
             margin-bottom: 4px;
         }
+
         input {
             width: 100%;
             box-sizing: border-box;
             padding: 6px;
         }
+
         small {
             display: block;
             margin-top: 4px;
         }
+
         button {
             width: 100%;
             padding: 8px;
         }
+
         #result {
-            margin-top: 16px;
+            max-width: 320px;
+            margin: 16px auto;
+            text-align: center;
         }
+
+        [hidden] {
+            display: none !important;
+        }
+
         #result.error {
             color: #b00020;
         }
+
         #result.success {
             color: #1b5e20;
         }
@@ -86,8 +101,8 @@
     </div>
 
     <button type="submit">Register</button>
-    <div id="result" role="status" aria-live="polite"></div>
 </form>
+<div id="result" role="status" aria-live="polite"></div>
 
 <script>
     const form = document.getElementById('registerForm');
@@ -156,6 +171,72 @@
         }
     }
 
+    const RESEND_COOLDOWN_SECONDS = 5 * 60;   // appsec.activation.resend-cooldown-minutes
+    const MAX_RESENDS = 2; // appsec.activation.max-tokens-per-user-per-day minus 1 (registration used one)
+
+    function addResendOption(email) {
+        const p = document.createElement('p');
+        p.textContent = "Didn't get the e-mail? ";
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.style.width = 'auto';
+        p.appendChild(btn);
+
+        const info = document.createElement('p');
+        info.setAttribute('role', 'status');
+
+        let sent = 0;
+
+        function startCooldown() {
+            let left = RESEND_COOLDOWN_SECONDS;
+            btn.disabled = true;
+            const timer = setInterval(() => {
+                left--;
+                if (left <= 0) {
+                    clearInterval(timer);
+                    btn.disabled = false;
+                    btn.textContent = 'Resend the link';
+                } else {
+                    const m = Math.floor(left / 60);
+                    const s = String(left % 60).padStart(2, '0');
+                    btn.textContent = 'Resend the link (' + m + ':' + s + ')';
+                }
+            }, 1000);
+            btn.textContent = 'Resend the link (5:00)';
+        }
+
+        btn.addEventListener('click', async () => {
+            sent++;
+            const limitReached = sent >= MAX_RESENDS;
+            if (limitReached) {
+                btn.disabled = true;
+                btn.textContent = 'Resend limit reached';
+            } else {
+                startCooldown();
+            }
+            try {
+                const response = await fetch('/api/auth/resend-activation', {
+                    method: 'POST',
+                    body: new URLSearchParams({email})
+                });
+                if (!response.ok) {
+                    info.textContent = 'Could not resend the link. Please try again later.';
+                } else if (limitReached) {
+                    info.textContent = 'A new link has been sent. You have reached the limit for today. '
+                        + 'If it does not arrive, check your spam folder or try again tomorrow.';
+                } else {
+                    info.textContent = 'A new link has been sent. Check your e-mail.';
+                }
+            } catch (e) {
+                info.textContent = 'Cannot reach the server.';
+            }
+        });
+
+        startCooldown();   // the registration e-mail just started the cooldown
+        result.appendChild(p);
+        result.appendChild(info);
+    }
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
         checkPasswordRules();
@@ -174,6 +255,7 @@
             password: password.value,
             captchaResponse: captcha
         };
+        const registeredEmail = payload.email;
 
         try {
             const response = await fetch('/api/auth/register', {
@@ -183,8 +265,9 @@
             });
             const body = await response.json().catch(() => ({}));
             if (response.ok) {
-                form.reset();
+                form.hidden = true;
                 showResult('success', body.message || 'Account created.', []);
+                addResendOption(registeredEmail);
             } else if (response.status === 429) {
                 showResult('error', 'Too many requests. Try again later.', []);
             } else {

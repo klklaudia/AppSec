@@ -1,4 +1,4 @@
-package appsec.safe.config;
+package appsec.safe.common.config;
 
 import lombok.Getter;
 import lombok.Setter;
